@@ -1,7 +1,7 @@
 #venv
 movies11/
 src/artifact/
-
+src/artifact/models/
 #text files
 *.txt
 
