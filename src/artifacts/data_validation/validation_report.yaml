@@ -1,0 +1,7 @@
+dataframe_shape: (1635, 14)
+note: Null values will be handled in Data Transformation stage
+overall_status: true
+schema_validation: true
+text_column_validation: true
+total_columns: 14
+total_rows: 1635

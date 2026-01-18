@@ -4,18 +4,18 @@ from src.exception import MyException
 
 # Components
 from src.components.data_ingestion import DataIngestion
-# from src.components.data_validation import DataValidation
-# from src.components.data_transformation import DataTransformation
-# from src.components.recommender_trainer import RecommenderTrainer
-# from src.components.recommender_evaluation import RecommenderEvaluation
+from src.components.data_validation import DataValidation
+from src.components.data_transformation import DataTransformation
+from src.components.recommender_trainer import RecommenderTrainer
+from src.components.recommender_evaluation import RecommenderEvaluation
 # from src.components.model_pusher import ModelPusher
-# from src.pipline.prediction_pipeline import MovieRecommender
+from src.pipline.prediction_pipeline import MovieRecommender
 # Configs
 from src.entity.config_entity import (
     DataIngestionConfig,
-    # DataValidationConfig,
-    # DataTransformationConfig,
-    # RecommenderModelConfig,
+    DataValidationConfig,
+    DataTransformationConfig,
+    RecommenderModelConfig,
     # ModelPusherConfig
 )
 from src.constants import MODEL_BUCKET_NAME, MODEL_PUSHER_S3_KEY
@@ -23,9 +23,9 @@ from src.constants import MODEL_BUCKET_NAME, MODEL_PUSHER_S3_KEY
 # Artifacts
 from src.entity.artifact_entity import (
     DataIngestionArtifact,
-    # DataValidationArtifact,
-    # DataTransformationArtifact,
-    # RecommenderModelArtifact,
+    DataValidationArtifact,
+    DataTransformationArtifact,
+    RecommenderModelArtifact,
     # RecommenderModelPusherArtifact
 )
 
@@ -36,9 +36,9 @@ class TrainingPipeline:
             logging.info("Initializing Movie Recommendation Training Pipeline")
 
             self.data_ingestion_config = DataIngestionConfig()
-            # self.data_validation_config = DataValidationConfig()
-            # self.data_transformation_config = DataTransformationConfig()
-            # self.recommender_model_config = RecommenderModelConfig()
+            self.data_validation_config = DataValidationConfig()
+            self.data_transformation_config = DataTransformationConfig()
+            self.recommender_model_config = RecommenderModelConfig()
             # self.model_pusher_config = ModelPusherConfig(
             #     bucket_name=MODEL_BUCKET_NAME,
             #     s3_model_dir=MODEL_PUSHER_S3_KEY,
@@ -70,94 +70,94 @@ class TrainingPipeline:
         except Exception as e:
             raise MyException(e, sys)
 
-    # # =========================================================
-    # # Data Validation
-    # # =========================================================
-    # def start_data_validation(
-    #     self,
-    #     data_ingestion_artifact: DataIngestionArtifact
-    # ) -> DataValidationArtifact:
-    #     try:
-    #         logging.info("Starting Data Validation stage")
+    # =========================================================
+    # Data Validation
+    # =========================================================
+    def start_data_validation(
+        self,
+        data_ingestion_artifact: DataIngestionArtifact
+    ) -> DataValidationArtifact:
+        try:
+            logging.info("Starting Data Validation stage")
 
-    #         data_validation = DataValidation(
-    #             data_ingestion_artifact=data_ingestion_artifact,
-    #             data_validation_config=self.data_validation_config
-    #         )
+            data_validation = DataValidation(
+                data_ingestion_artifact=data_ingestion_artifact,
+                data_validation_config=self.data_validation_config
+            )
 
-    #         data_validation_artifact = data_validation.initiate_data_validation()
+            data_validation_artifact = data_validation.initiate_data_validation()
 
-    #         if not data_validation_artifact.validation_status:
-    #             raise Exception("Data validation failed")
+            if not data_validation_artifact.validation_status:
+                raise Exception("Data validation failed")
 
-    #         logging.info("Data Validation completed successfully")
+            logging.info("Data Validation completed successfully")
 
-    #         return data_validation_artifact
+            return data_validation_artifact
 
-    #     except Exception as e:
-    #         raise MyException(e, sys)
+        except Exception as e:
+            raise MyException(e, sys)
 
-    # # =========================================================
-    # # Data Transformation
-    # # =========================================================
-    # def start_data_transformation(
-    #     self,
-    #     data_ingestion_artifact: DataIngestionArtifact,
-    #     data_validation_artifact: DataValidationArtifact
-    # ) -> DataTransformationArtifact:
-    #     try:
-    #         logging.info("Starting Data Transformation stage")
+    # =========================================================
+    # Data Transformation
+    # =========================================================
+    def start_data_transformation(
+        self,
+        data_ingestion_artifact: DataIngestionArtifact,
+        data_validation_artifact: DataValidationArtifact
+    ) -> DataTransformationArtifact:
+        try:
+            logging.info("Starting Data Transformation stage")
 
-    #         data_transformation = DataTransformation(
-    #             data_ingestion_artifact=data_ingestion_artifact,
-    #             data_validation_artifact=data_validation_artifact,
-    #             data_transformation_config=self.data_transformation_config
-    #         )
+            data_transformation = DataTransformation(
+                data_ingestion_artifact=data_ingestion_artifact,
+                data_validation_artifact=data_validation_artifact,
+                data_transformation_config=self.data_transformation_config
+            )
 
-    #         data_transformation_artifact = (
-    #             data_transformation.initiate_data_transformation()
-    #         )
+            data_transformation_artifact = (
+                data_transformation.initiate_data_transformation()
+            )
 
-    #         logging.info(
-    #             f"Data Transformation completed. Transformed data at: "
-    #             f"{data_transformation_artifact.transformed_data_file_path}"
-    #         )
+            logging.info(
+                f"Data Transformation completed. Transformed data at: "
+                f"{data_transformation_artifact.transformed_data_file_path}"
+            )
 
-    #         return data_transformation_artifact
+            return data_transformation_artifact
 
-    #     except Exception as e:
-    #         raise MyException(e, sys)
+        except Exception as e:
+            raise MyException(e, sys)
 
-    # # =========================================================
-    # # Recommender Trainer
-    # # =========================================================
-    # def start_recommender_trainer(
-    #     self,
-    #     data_transformation_artifact: DataTransformationArtifact
-    # ) -> RecommenderModelArtifact:
-    #     try:
-    #         logging.info("Starting Recommender Trainer stage")
+    # =========================================================
+    # Recommender Trainer
+    # =========================================================
+    def start_recommender_trainer(
+        self,
+        data_transformation_artifact: DataTransformationArtifact
+    ) -> RecommenderModelArtifact:
+        try:
+            logging.info("Starting Recommender Trainer stage")
 
-    #         recommender_trainer = RecommenderTrainer(
-    #             data_transformation_artifact=data_transformation_artifact,
-    #             recommender_model_config=self.recommender_model_config
-    #         )
+            recommender_trainer = RecommenderTrainer(
+                data_transformation_artifact=data_transformation_artifact,
+                recommender_model_config=self.recommender_model_config
+            )
 
-    #         recommender_model_artifact = (
-    #             recommender_trainer.initiate_recommender_trainer()
-    #         )
+            recommender_model_artifact = (
+                recommender_trainer.initiate_recommender_trainer()
+            )
 
-    #         logging.info(
-    #             "Recommender Trainer completed. Artifacts saved at:"
-    #             f"\nTF-IDF: {recommender_model_artifact.tfidf_vectorizer_path}"
-    #             f"\nMatrix: {recommender_model_artifact.tfidf_matrix_path}"
-    #             f"\nCosine: {recommender_model_artifact.cosine_similarity_path}"
-    #         )
+            logging.info(
+                "Recommender Trainer completed. Artifacts saved at:"
+                f"\nTF-IDF: {recommender_model_artifact.tfidf_vectorizer_path}"
+                f"\nMatrix: {recommender_model_artifact.tfidf_matrix_path}"
+                f"\nCosine: {recommender_model_artifact.cosine_similarity_path}"
+            )
 
-    #         return recommender_model_artifact
+            return recommender_model_artifact
 
-    #     except Exception as e:
-    #         raise MyException(e, sys)
+        except Exception as e:
+            raise MyException(e, sys)
 
     # # =========================================================
     # # Model Pusher
@@ -191,29 +191,29 @@ class TrainingPipeline:
 
             data_ingestion_artifact = self.start_data_ingestion()
 
-            # data_validation_artifact = self.start_data_validation(
-            #     data_ingestion_artifact
-            # )
+            data_validation_artifact = self.start_data_validation(
+                data_ingestion_artifact
+            )
 
-            # data_transformation_artifact = self.start_data_transformation(
-            #     data_ingestion_artifact,
-            #     data_validation_artifact
-            # )
+            data_transformation_artifact = self.start_data_transformation(
+                data_ingestion_artifact,
+                data_validation_artifact
+            )
 
-            # recommender_trainer_artifact = self.start_recommender_trainer(
-            #     data_transformation_artifact
-            # )
-            # # Load recommender for evaluation
-            # recommender = MovieRecommender()
+            recommender_trainer_artifact = self.start_recommender_trainer(
+                data_transformation_artifact
+            )
+            # Load recommender for evaluation
+            recommender = MovieRecommender()
 
-            # evaluator = RecommenderEvaluation(
-            #     df=recommender.df,
-            #     cosine_sim=recommender.cosine_sim,
-            #     recommend_fn=recommender.recommend
-            # )
+            evaluator = RecommenderEvaluation(
+                df=recommender.df,
+                cosine_sim=recommender.cosine_sim,
+                recommend_fn=recommender.recommend_by_index
+            )
 
-            # precision, recall, f1 = evaluator.precision_recall_f1_at_k(k=10)
-            # genre_precision = evaluator.genre_precision_at_k(k=10)
+            precision, recall, f1 = evaluator.precision_recall_f1_at_k(k=10)
+            genre_precision = evaluator.genre_precision_at_k(k=10)
 
             # # Upload trained artifacts to S3
             # self.start_model_pusher()

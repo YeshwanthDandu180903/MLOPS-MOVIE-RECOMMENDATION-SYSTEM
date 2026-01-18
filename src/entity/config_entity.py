@@ -35,37 +35,37 @@ class DataIngestionConfig:
     collection_name: str = COLLECTION_NAME
 
 
-# @dataclass
-# class DataValidationConfig:
-#     data_validation_dir: str = DATA_VALIDATION_DIR
-#     validation_report_path: str = os.path.join(
-#         DATA_VALIDATION_DIR, "validation_report.yaml"
-#     )
-#     schema_file_path: str = SCHEMA_FILE_PATH
+@dataclass
+class DataValidationConfig:
+    data_validation_dir: str = DATA_VALIDATION_DIR
+    validation_report_path: str = os.path.join(
+        DATA_VALIDATION_DIR, "validation_report.yaml"
+    )
+    schema_file_path: str = SCHEMA_FILE_PATH
+
+
+# =========================================================
+# Data Transformation Config
+# =========================================================
+@dataclass
+class DataTransformationConfig:
+    data_transformation_dir: str = os.path.join(
+        training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR
+    )
+    transformed_data_path: str = os.path.join(
+        data_transformation_dir, "movies_transformed.csv"
+    )
 
 
 # # =========================================================
-# # Data Transformation Config
+# # Recommender Model Config  (NEW & IMPORTANT)
 # # =========================================================
-# @dataclass
-# class DataTransformationConfig:
-#     data_transformation_dir: str = os.path.join(
-#         training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR
-#     )
-#     transformed_data_path: str = os.path.join(
-#         data_transformation_dir, "movies_transformed.csv"
-#     )
-
-
-# # # =========================================================
-# # # Recommender Model Config  (NEW & IMPORTANT)
-# # # =========================================================
-# #@dataclass
-# class RecommenderModelConfig:
-#     model_dir: str = "src/artifacts/models"
-#     tfidf_vectorizer_path: str = os.path.join(model_dir, "tfidf_vectorizer.pkl")
-#     tfidf_matrix_path: str = os.path.join(model_dir, "tfidf_matrix.npz")
-#     cosine_similarity_path: str = os.path.join(model_dir, "cosine_similarity.npy")
+#@dataclass
+class RecommenderModelConfig:
+    model_dir: str = "src/artifacts/models"
+    tfidf_vectorizer_path: str = os.path.join(model_dir, "tfidf_vectorizer.pkl")
+    tfidf_matrix_path: str = os.path.join(model_dir, "tfidf_matrix.npz")
+    cosine_similarity_path: str = os.path.join(model_dir, "cosine_similarity.npy")
     
 # @dataclass
 # class ModelPusherConfig:

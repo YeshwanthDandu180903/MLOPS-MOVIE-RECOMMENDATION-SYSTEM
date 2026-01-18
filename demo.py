@@ -14,19 +14,19 @@
 
 # # print("cwd:", os.getcwd())
 
-from src.pipline.training_pipeline import TrainingPipeline
+# from src.pipline.training_pipeline import TrainingPipeline
 
-pipeline = TrainingPipeline()
-pipeline.run_pipeline()
-
-
-# from src.pipeline.prediction_pipeline import MovieRecommender
+# pipeline = TrainingPipeline()
+# pipeline.run_pipeline()
 
 
-# recommender = MovieRecommender()
+from src.pipline.prediction_pipeline import MovieRecommender
 
-# matched_movie, recs = recommender.recommend(" bahubali", top_n=10)
 
-# print(f"\n🎬 Matched Movie: {matched_movie}\n")
-# print("📌 Recommendations:")
-# print(recs)
+recommender = MovieRecommender()
+
+matched_movie, recs = recommender.recommend("avengers", top_n=10)
+
+print(f"\n🎬 Matched Movie: {matched_movie}\n")
+print("📌 Recommendations:")
+print(recs)

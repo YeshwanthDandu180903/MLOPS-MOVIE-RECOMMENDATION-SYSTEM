@@ -1,0 +1,34 @@
+columns:
+  - title
+  - overview
+  - genres
+  - keywords
+  - cast
+  - director
+  - rating
+  - poster_url
+  - vote_count
+  - release_date
+
+required_text_columns:
+  - overview
+  - genres
+  - keywords
+  - cast
+  - director
+
+# These columns are present but NOT used for training
+ignore_columns:
+  - _id
+  - imdb_rating
+  - imdb_votes
+  - backdrop_url
+  - director_len
+  - cast_len
+  - genres_len
+  - keywords_len
+  - overview_len
+  - title_tokens
+  - title_norm
+  - combined_text
+  - rating_norm
