@@ -1,6 +1,11 @@
 #venv
 movies11/
 src/artifacts/
+
+
+
+model_cache/
+
 #text files
 *.txt
 *.csv
