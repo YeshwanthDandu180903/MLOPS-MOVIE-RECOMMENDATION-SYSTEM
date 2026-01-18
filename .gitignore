@@ -3,7 +3,7 @@ movies11/
 src/artifacts/
 #text files
 *.txt
-
+*.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

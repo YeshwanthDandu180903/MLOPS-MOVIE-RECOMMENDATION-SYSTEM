@@ -52,10 +52,10 @@ class RecommenderEvaluationArtifact:
     genre_precision_at_k: Optional[float] = None
 
 
-# # # =========================================================
-# # # Recommender Model Pusher Artifact (Optional – S3)
-# # # =========================================================
-# @dataclass
-# class RecommenderModelPusherArtifact:
-#     bucket_name: str
-#     s3_model_path: str
+# # =========================================================
+# # Recommender Model Pusher Artifact (Optional – S3)
+# # =========================================================
+@dataclass
+class RecommenderModelPusherArtifact:
+    bucket_name: str
+    s3_model_path: str

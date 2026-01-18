@@ -27,6 +27,7 @@ DATA_INGESTION_DIR = ARTIFACT_DIR / "data_ingestion"
 DATA_VALIDATION_DIR = ARTIFACT_DIR / "data_validation"
 DATA_TRANSFORMATION_DIR = ARTIFACT_DIR / "data_transformation"
 MODEL_DIR = ARTIFACT_DIR / "models"
+BEST_MODEL_DIR = MODEL_DIR / "best_model"
 
 # Create dirs safely
 for dir_path in [
@@ -34,7 +35,8 @@ for dir_path in [
     DATA_INGESTION_DIR,
     DATA_VALIDATION_DIR,
     DATA_TRANSFORMATION_DIR,
-    MODEL_DIR
+    MODEL_DIR,
+    BEST_MODEL_DIR
 ]:
     dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -75,16 +77,21 @@ TEXT_COLUMNS = [
 TFIDF_VECTORIZER_FILE_NAME = "tfidf_vectorizer.pkl"
 TFIDF_MATRIX_FILE_NAME = "tfidf_matrix.npz"
 COSINE_SIMILARITY_FILE_NAME = "cosine_similarity.npy"
+TRAINING_DF_FILE_NAME = "training_df.csv"
+BEST_MODEL_METRICS_FILE_NAME = "best_metrics.json"
 
 TFIDF_VECTORIZER_PATH = MODEL_DIR / TFIDF_VECTORIZER_FILE_NAME
 TFIDF_MATRIX_PATH = MODEL_DIR / TFIDF_MATRIX_FILE_NAME
 COSINE_SIMILARITY_PATH = MODEL_DIR / COSINE_SIMILARITY_FILE_NAME
+TRAINING_DF_PATH = MODEL_DIR / TRAINING_DF_FILE_NAME
+BEST_MODEL_METRICS_PATH = BEST_MODEL_DIR / BEST_MODEL_METRICS_FILE_NAME
 
 # ============================================================
 # Optional: Model Evaluation (Ranking metrics)
 # ============================================================
 
 TOP_K_RECOMMENDATIONS = 10
+GENRE_PRECISION_THRESHOLD = 0.50
 
 # ============================================================
 # AWS / Cloud (optional – future extension)
@@ -96,6 +103,7 @@ REGION_NAME = "us-east-1"
 
 MODEL_BUCKET_NAME = "movie-recommender-mlops"
 MODEL_PUSHER_S3_KEY = "model-registry/movie-recommender"
+BEST_MODEL_S3_DIR = f"{MODEL_PUSHER_S3_KEY}/best_model"
 
 # ============================================================
 # App / API constants

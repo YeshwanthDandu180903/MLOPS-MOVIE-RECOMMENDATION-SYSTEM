@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Movie Recommendation System</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>🎬 Movie Recommendation System</h1>
+
+    <!-- SEARCH AREA WITH WRAPPER (IMPORTANT FOR SUGGESTIONS) -->
+    <div class="search-wrapper">
+        <div class="search-box">
+            <input type="text" 
+                   id="movieInput" 
+                   placeholder="Search a movie... (e.g. Baahubali)"
+                   onkeyup="showSuggestions()"
+                   autocomplete="off">
+            <button onclick="recommend()">Recommend</button>
+        </div>
+
+        <!-- Suggestion dropdown (now aligned correctly) -->
+        <div id="suggestions" class="suggestion-box"></div>
+    </div>
+
+    <p id="matchedMovie"></p>
+
+    <div id="results" class="movie-grid"></div>
+</div>
+
+<script>
+
+// ------------------ RECOMMENDATION ------------------
+async function recommend() {
+    let title = document.getElementById("movieInput").value.trim();
+    if (!title) {
+        alert("Please enter a movie name");
+        return;
+    }
+
+    document.getElementById("matchedMovie").innerHTML = "Loading...";
+    document.getElementById("results").innerHTML = "";
+
+    const res = await fetch(`/recommend?title=${encodeURIComponent(title)}&top_n=10`);
+    const data = await res.json();
+
+    if (data.error) {
+        document.getElementById("matchedMovie").innerHTML = data.error;
+        return;
+    }
+
+    document.getElementById("matchedMovie").innerHTML =
+        `<strong>Matched:</strong> ${data.matched_title}`;
+
+    let html = "";
+    data.results.forEach(m => {
+        html += `
+            <div class="movie-card">
+                <img src="${m.poster_url}" alt="Poster">
+                <h3>${m.title}</h3>
+                <p><strong>Genres:</strong> ${m.genres}</p>
+                <p><strong>Rating:</strong> ⭐ ${m.rating}</p>
+            </div>
+        `;
+    });
+
+    document.getElementById("results").innerHTML = html;
+}
+
+
+// ------------------ LIVE SEARCH SUGGESTIONS ------------------
+async function showSuggestions() {
+    let q = document.getElementById("movieInput").value.trim();
+
+    if (q.length < 2) {
+        document.getElementById("suggestions").innerHTML = "";
+        return;
+    }
+
+    const res = await fetch(`/search?query=${encodeURIComponent(q)}`);
+    const data = await res.json();
+
+    let html = "";
+    data.forEach(m => {
+        html += `
+            <div class="suggestion-item" onclick="selectSuggestion('${m.title}')">
+                <img src="${m.poster_url}" alt="">
+                <span>${m.title}</span>
+            </div>
+        `;
+    });
+
+    document.getElementById("suggestions").innerHTML = html;
+}
+
+// ------------------ AUTO-FILL SUGGESTION ------------------
+function selectSuggestion(title) {
+    document.getElementById("movieInput").value = title;
+    document.getElementById("suggestions").innerHTML = "";
+}
+
+</script>
+
+</body>
+</html>

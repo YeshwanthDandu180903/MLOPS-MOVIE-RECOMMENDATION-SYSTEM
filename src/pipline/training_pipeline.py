@@ -8,7 +8,7 @@ from src.components.data_validation import DataValidation
 from src.components.data_transformation import DataTransformation
 from src.components.recommender_trainer import RecommenderTrainer
 from src.components.recommender_evaluation import RecommenderEvaluation
-# from src.components.model_pusher import ModelPusher
+from src.components.model_pusher import ModelPusher
 from src.pipline.prediction_pipeline import MovieRecommender
 # Configs
 from src.entity.config_entity import (
@@ -16,9 +16,9 @@ from src.entity.config_entity import (
     DataValidationConfig,
     DataTransformationConfig,
     RecommenderModelConfig,
-    # ModelPusherConfig
+    ModelPusherConfig
 )
-from src.constants import MODEL_BUCKET_NAME, MODEL_PUSHER_S3_KEY
+from src.constants import BEST_MODEL_DIR, BEST_MODEL_S3_DIR, MODEL_BUCKET_NAME
 
 # Artifacts
 from src.entity.artifact_entity import (
@@ -26,7 +26,7 @@ from src.entity.artifact_entity import (
     DataValidationArtifact,
     DataTransformationArtifact,
     RecommenderModelArtifact,
-    # RecommenderModelPusherArtifact
+    RecommenderModelPusherArtifact
 )
 
 
@@ -39,11 +39,11 @@ class TrainingPipeline:
             self.data_validation_config = DataValidationConfig()
             self.data_transformation_config = DataTransformationConfig()
             self.recommender_model_config = RecommenderModelConfig()
-            # self.model_pusher_config = ModelPusherConfig(
-            #     bucket_name=MODEL_BUCKET_NAME,
-            #     s3_model_dir=MODEL_PUSHER_S3_KEY,
-            #     local_artifact_dir=self.recommender_model_config.model_dir
-            # )
+            self.model_pusher_config = ModelPusherConfig(
+                bucket_name=MODEL_BUCKET_NAME,
+                s3_model_dir=BEST_MODEL_S3_DIR,
+                local_artifact_dir=str(BEST_MODEL_DIR)
+            )
 
         except Exception as e:
             raise MyException(e, sys)
@@ -159,28 +159,28 @@ class TrainingPipeline:
         except Exception as e:
             raise MyException(e, sys)
 
-    # # =========================================================
-    # # Model Pusher
-    # # =========================================================
-    # def start_model_pusher(self) -> RecommenderModelPusherArtifact:
-    #     try:
-    #         logging.info("Starting Model Pusher stage")
+    # =========================================================
+    # Model Pusher
+    # =========================================================
+    def start_model_pusher(self) -> RecommenderModelPusherArtifact:
+        try:
+            logging.info("Starting Model Pusher stage")
 
-    #         model_pusher = ModelPusher(
-    #             model_pusher_config=self.model_pusher_config
-    #         )
+            model_pusher = ModelPusher(
+                model_pusher_config=self.model_pusher_config
+            )
 
-    #         model_pusher_artifact = model_pusher.initiate_model_pusher()
+            model_pusher_artifact = model_pusher.initiate_model_pusher()
 
-    #         logging.info(
-    #             f"Model uploaded to s3://{model_pusher_artifact.bucket_name}/"
-    #             f"{model_pusher_artifact.s3_model_path}"
-    #         )
+            logging.info(
+                f"Model uploaded to s3://{model_pusher_artifact.bucket_name}/"
+                f"{model_pusher_artifact.s3_model_path}"
+            )
 
-    #         return model_pusher_artifact
+            return model_pusher_artifact
 
-    #     except Exception as e:
-    #         raise MyException(e, sys)
+        except Exception as e:
+            raise MyException(e, sys)
 
     # =========================================================
     # Run Entire Pipeline
@@ -214,6 +214,17 @@ class TrainingPipeline:
 
             precision, recall, f1 = evaluator.precision_recall_f1_at_k(k=10)
             genre_precision = evaluator.genre_precision_at_k(k=10)
+
+            updated = evaluator.update_best_model_if_needed(
+                precision=precision,
+                recall=recall,
+                f1=f1,
+                genre_precision=genre_precision,
+                k=10
+            )
+
+            if updated:
+                self.start_model_pusher()
 
             # # Upload trained artifacts to S3
             # self.start_model_pusher()

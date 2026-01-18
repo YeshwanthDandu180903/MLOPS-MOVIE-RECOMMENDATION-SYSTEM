@@ -8,7 +8,11 @@ from difflib import SequenceMatcher
 
 from src.exception import MyException
 from src.logger import logging
-from src.constants import COSINE_SIMILARITY_PATH
+from src.constants import (
+    BEST_MODEL_DIR,
+    COSINE_SIMILARITY_FILE_NAME,
+    TRAINING_DF_FILE_NAME
+)
 from src.entity.config_entity import RecommenderModelConfig
 
 
@@ -49,19 +53,32 @@ class MovieRecommender:
             logging.info("Loading recommender artifacts")
 
             model_config = RecommenderModelConfig()
-            self.model_dir = model_config.model_dir
+
+            best_df_path = os.path.join(BEST_MODEL_DIR, TRAINING_DF_FILE_NAME)
+            best_cosine_path = os.path.join(BEST_MODEL_DIR, COSINE_SIMILARITY_FILE_NAME)
+
+            if os.path.exists(best_df_path) and os.path.exists(best_cosine_path):
+                self.model_dir = str(BEST_MODEL_DIR)
+                df_path = best_df_path
+                cosine_path = best_cosine_path
+                logging.info("Loading BEST recommender artifacts")
+            else:
+                self.model_dir = model_config.model_dir
+                df_path = os.path.join(self.model_dir, TRAINING_DF_FILE_NAME)
+                cosine_path = model_config.cosine_similarity_path
+                logging.info("Loading latest recommender artifacts")
 
             # Load SAME df used for training
-            self.df = pd.read_csv(
-                os.path.join(self.model_dir, "training_df.csv")
-            )
-
-            self.cosine_sim = np.load(model_config.cosine_similarity_path)
+            self.df = pd.read_csv(df_path)
+            self.cosine_sim = np.load(cosine_path)
 
             # Search helpers (for USER queries only)
             self.df["title_norm"] = self.df["title"].apply(normalize_text)
             self.df["title_tokens"] = self.df["title_norm"].apply(
                 lambda x: set(x.split())
+            )
+            self.df["title_compact"] = self.df["title_norm"].str.replace(
+                r"[^a-z0-9]", "", regex=True
             )
 
             self.df["rating"] = self.df["rating"].fillna(
@@ -111,6 +128,8 @@ class MovieRecommender:
     # -------------------------------------------------
     def find_movie(self, query: str):
         q = normalize_text(query)
+        q_compact = re.sub(r"[^a-z0-9]", "", q)
+        q_spaced = " ".join(list(q_compact))
         q_tokens = set(q.split())
         q_acronym = " ".join(list(q))  # kgf → k g f
 
@@ -133,13 +152,37 @@ class MovieRecommender:
         if not exact.empty:
             return exact.iloc[0]["title"]
 
+        exact_compact = self.df[self.df["title_compact"] == q_compact]
+        if not exact_compact.empty:
+            return exact_compact.iloc[0]["title"]
+
+        exact_spaced = self.df[self.df["title_norm"].str.startswith(q_spaced)]
+        if not exact_spaced.empty:
+            return exact_spaced.sort_values("vote_count", ascending=False).iloc[0]["title"]
+
+        # For very short queries (<=4 chars), avoid fuzzy overreach; stop here
+        if len(q_compact) <= 4:
+            return None
+
         sub = self.df[self.df["title_norm"].str.contains(q, regex=False)]
         if not sub.empty:
             return sub.sort_values("vote_count", ascending=False).iloc[0]["title"]
 
+        sub_compact = self.df[self.df["title_compact"].str.contains(q_compact, regex=False)]
+        if not sub_compact.empty:
+            return sub_compact.sort_values("vote_count", ascending=False).iloc[0]["title"]
+
+        sub_spaced = self.df[self.df["title_norm"].str.contains(q_spaced, regex=False)]
+        if not sub_spaced.empty:
+            return sub_spaced.sort_values("vote_count", ascending=False).iloc[0]["title"]
+
         acro = self.df[self.df["title_norm"].str.startswith(q_acronym)]
         if not acro.empty:
             return acro.sort_values("vote_count", ascending=False).iloc[0]["title"]
+
+        acro_compact = self.df[self.df["title_compact"].str.startswith(q_compact)]
+        if not acro_compact.empty:
+            return acro_compact.sort_values("vote_count", ascending=False).iloc[0]["title"]
 
         # ---------- FUZZY FALLBACK ----------
         best_title = None

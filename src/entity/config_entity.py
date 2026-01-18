@@ -1,10 +1,16 @@
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from src.constants import *
-from dataclasses import dataclass
-from src.constants import DATA_VALIDATION_DIR, SCHEMA_FILE_PATH
-import os
+
+from src.constants import (
+    ARTIFACT_DIR,
+    COLLECTION_NAME,
+    DATA_INGESTION_DIR,
+    DATA_TRANSFORMATION_DIR,
+    DATA_VALIDATION_DIR,
+    PIPELINE_NAME,
+    SCHEMA_FILE_PATH,
+)
 TIMESTAMP = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
 
 
@@ -57,19 +63,19 @@ class DataTransformationConfig:
     )
 
 
-# # =========================================================
-# # Recommender Model Config  (NEW & IMPORTANT)
-# # =========================================================
-#@dataclass
+# =========================================================
+# Recommender Model Config
+# =========================================================
+@dataclass
 class RecommenderModelConfig:
     model_dir: str = "src/artifacts/models"
     tfidf_vectorizer_path: str = os.path.join(model_dir, "tfidf_vectorizer.pkl")
     tfidf_matrix_path: str = os.path.join(model_dir, "tfidf_matrix.npz")
     cosine_similarity_path: str = os.path.join(model_dir, "cosine_similarity.npy")
     
-# @dataclass
-# class ModelPusherConfig:
-#     bucket_name: str
-#     s3_model_dir: str
-#     local_artifact_dir: str
+@dataclass
+class ModelPusherConfig:
+    bucket_name: str
+    s3_model_dir: str
+    local_artifact_dir: str
     

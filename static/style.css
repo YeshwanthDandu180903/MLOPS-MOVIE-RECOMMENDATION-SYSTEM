@@ -1,0 +1,202 @@
+body {
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #ffcc00;
+    font-size: 52px;
+}
+
+.search-box {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.search-box input {
+    width: 300px;
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    font-size: 16px;
+}
+
+.search-box button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background: #ffcc00;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.search-box button:hover {
+    background: #ffdd33;
+}
+
+.movie-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+}
+
+.movie-card {
+    background: #222;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.movie-card img {
+    width: 100%;
+    border-radius: 8px;
+}
+
+.movie-card h3 {
+    font-size: 16px;
+    margin-top: 10px;
+    color: #ffcc00;
+}
+
+.movie-card p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+
+
+/* Suggestion Box Wrapper */
+.suggestion-box {
+    width: 350px;
+    background: #1a1a1a;
+    border-radius: 8px;
+    overflow-y: auto;
+    position: absolute;
+    top: 50px;
+    left: 0;
+    z-index: 2000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    border: 1px solid #333;
+    animation: fadeIn 0.15s ease-in-out;
+}
+
+/* Each item inside suggestion */
+.suggestion-item {
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    color: #f1f1f1;
+    font-size: 15px;
+    border-bottom: 1px solid #2a2a2a;
+    transition: background 0.2s;
+}
+
+.suggestion-item:hover {
+    background: #333;
+    color: #ffcc00;
+}
+
+/* Movie poster thumbnail */
+.suggestion-item img {
+    width: 40px;
+    height: 55px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+
+/* WRAPS SEARCH + SUGGESTIONS */
+.search-wrapper {
+    position: relative;
+    width: 420px;
+    margin: 0 auto;
+}
+
+/* SUGGESTION DROPDOWN */
+.suggestion-box {
+    position: absolute;
+    top: 48px;     /* BELOW INPUT */
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: #1e1e1e;
+    border-radius: 8px;
+    border: 1px solid #333;
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 2000;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+/* EACH SUGGESTION */
+.suggestion-item {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
+    color: #eee;
+    border-bottom: 1px solid #333;
+}
+
+.suggestion-item:hover {
+    background: #333;
+    color: #ffcc00;
+}
+
+/* IMAGE INSIDE SUGGESTION DROPDOWN */
+.suggestion-item img {
+    width: 40px;
+    height: 55px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+
+    background-image: url('/static/bg.jpg'); /* YOU ADD bg.jpg inside static folder */
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-attachment: fixed;
+
+    /* Blur overlay */
+    backdrop-filter: blur(6px);
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65); /* dark tint */
+    z-index: -1;
+}
+
+
+
+
+
+
+/* Animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
