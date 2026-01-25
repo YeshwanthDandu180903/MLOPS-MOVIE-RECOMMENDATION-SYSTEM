@@ -8,7 +8,10 @@ movies1/
 model_cache/
 
 #text files
-*.txt
+plan.txt
+credits.txt
+
+
 *.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/

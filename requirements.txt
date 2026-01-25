@@ -1,0 +1,57 @@
+# -----------------------------
+# Core Data Science
+# -----------------------------
+numpy
+# pandas.\venv\Scripts\Activate.ps1
+scikit-learn
+scipy
+seaborn
+matplotlib
+
+# -----------------------------
+# Text / NLP (Recommendation)
+# -----------------------------
+nltk
+joblib
+
+# -----------------------------
+# Imbalanced Learning
+# -----------------------------
+imbalanced-learn
+
+# -----------------------------
+# Backend / API
+# -----------------------------
+fastapi
+uvicorn
+python-multipart
+jinja2
+
+# -----------------------------
+# Storage & Cloud
+# -----------------------------
+boto3
+botocore
+mypy-boto3-s3
+google-cloud-storage
+pymongo
+certifi
+
+# -----------------------------
+# Config & Serialization
+# -----------------------------
+PyYAML
+dill
+from-root
+
+# -----------------------------
+# Notebook / Dev (Optional)
+# -----------------------------
+ipykernel
+
+# -----------------------------
+# Editable Project Install
+# -----------------------------
+# -e .
+flask
+flask-cors
