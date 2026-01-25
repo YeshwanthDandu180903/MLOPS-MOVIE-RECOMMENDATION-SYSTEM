@@ -123,8 +123,8 @@ class DataTransformation:
         """EXACT notebook combined_text"""
         df["combined_text"] = (
             df["overview"] + " " +
-            df["genres"] + " " +
-            df["keywords"] + " " +
+            (df["genres"] + " ")+
+            (df["keywords"] + " ") +
             df["cast"] + " " +
             df["director"]
         )

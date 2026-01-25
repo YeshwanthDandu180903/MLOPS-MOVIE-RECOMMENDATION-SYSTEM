@@ -31,6 +31,8 @@ class ModelPusher:
             bucket_name = self.model_pusher_config.bucket_name
             s3_dir = self.model_pusher_config.s3_model_dir
 
+            uploaded_files = 0
+
             for root, _, files in os.walk(local_artifact_dir):
                 for file in files:
                     local_path = os.path.join(root, file)
@@ -47,6 +49,14 @@ class ModelPusher:
                         bucket_name=bucket_name,
                         remove=False
                     )
+
+                    uploaded_files += 1
+
+            if uploaded_files == 0:
+                raise Exception(
+                    f"No files found to upload in local_artifact_dir: {local_artifact_dir}. "
+                    "Ensure best_model artifacts exist before pushing."
+                )
 
             model_pusher_artifact = RecommenderModelPusherArtifact(
                 bucket_name=bucket_name,

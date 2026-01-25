@@ -29,45 +29,113 @@ from src.constants import (
 # LOAD MODELS & DATA (S3 first, fallback to local)
 # -----------------------------
 
+MODEL_SOURCE = os.getenv("MODEL_SOURCE", "s3").strip().lower()  # s3 | auto
+FORCE_S3_DOWNLOAD = os.getenv("FORCE_S3_DOWNLOAD", "0").strip().lower() in {"1", "true", "yes"}
+
 def _aws_creds_present() -> bool:
     return bool(os.getenv(AWS_ACCESS_KEY_ID_ENV_KEY) and os.getenv(AWS_SECRET_ACCESS_KEY_ENV_KEY))
 
 
-def _download_s3_prefix(bucket: str, prefix: str, local_dir: Path) -> bool:
+def _download_s3_required_artifacts(bucket: str, prefix: str, local_dir: Path) -> bool:
+    """Download the required model artifacts from S3 into local_dir.
+
+    Uses direct key downloads (no prefix listing) so it works even when the IAM
+    policy does not grant s3:ListBucket.
+    """
     try:
         s3 = SimpleStorageService()
-        objects = s3.s3_resource.Bucket(bucket).objects.filter(Prefix=prefix)
 
-        found = False
-        for obj in objects:
-            if obj.key.endswith("/"):
-                continue
-            found = True
-            rel_path = os.path.relpath(obj.key, prefix)
-            local_path = local_dir / rel_path
+        required = [
+            TRAINING_DF_FILE_NAME,
+            TFIDF_VECTORIZER_FILE_NAME,
+            TFIDF_MATRIX_FILE_NAME,
+            COSINE_SIMILARITY_FILE_NAME,
+        ]
+
+        ok = True
+        for filename in required:
+            key = f"{prefix.rstrip('/')}/{filename}"
+            local_path = local_dir / filename
             local_path.parent.mkdir(parents=True, exist_ok=True)
-            s3.s3_client.download_file(bucket, obj.key, str(local_path))
+            try:
+                s3.s3_client.download_file(bucket, key, str(local_path))
+            except Exception as e:
+                ok = False
+                logging.warning(f"Failed to download s3://{bucket}/{key}: {e}")
 
-        return found
+        return ok
     except Exception as e:
         logging.warning(f"S3 download failed: {e}")
         return False
 
 
+def _has_required_artifacts(model_dir: Path) -> bool:
+    required = [
+        TRAINING_DF_FILE_NAME,
+        TFIDF_VECTORIZER_FILE_NAME,
+        TFIDF_MATRIX_FILE_NAME,
+        COSINE_SIMILARITY_FILE_NAME,
+    ]
+    return all((model_dir / f).exists() for f in required)
+
+
+def _missing_required_artifacts(model_dir: Path) -> list[str]:
+    required = [
+        TRAINING_DF_FILE_NAME,
+        TFIDF_VECTORIZER_FILE_NAME,
+        TFIDF_MATRIX_FILE_NAME,
+        COSINE_SIMILARITY_FILE_NAME,
+    ]
+    return [f for f in required if not (model_dir / f).exists()]
+
+
 def _resolve_model_dir() -> Path:
-    if _aws_creds_present():
-        cache_dir = Path("model_cache") / "best_model"
+    cache_dir = Path("model_cache") / "best_model"
+
+    # If running in 'auto' mode and cache is already complete (and not forced), use it.
+    if MODEL_SOURCE == "auto" and not FORCE_S3_DOWNLOAD and _has_required_artifacts(cache_dir):
+        logging.info("Loaded best model artifacts from local cache_dir")
+        return cache_dir
+
+    # Always try S3 first in both 's3' and 'auto' modes.
+    if MODEL_SOURCE in {"s3", "auto"}:
         cache_dir.mkdir(parents=True, exist_ok=True)
-        if _download_s3_prefix(MODEL_BUCKET_NAME, BEST_MODEL_S3_DIR, cache_dir):
+        downloaded = _download_s3_required_artifacts(MODEL_BUCKET_NAME, BEST_MODEL_S3_DIR, cache_dir)
+        if downloaded and _has_required_artifacts(cache_dir):
             logging.info("Loaded best model artifacts from S3")
             return cache_dir
 
-    if BEST_MODEL_DIR.exists():
-        logging.info("Loaded best model artifacts from local best_model directory")
-        return BEST_MODEL_DIR
+        if MODEL_SOURCE == "s3":
+            raise RuntimeError(
+                "MODEL_SOURCE is set to 's3' but the model could not be downloaded from S3. "
+                f"Bucket: {MODEL_BUCKET_NAME}, Prefix: {BEST_MODEL_S3_DIR}. "
+                "Fix AWS auth (set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY, or configure AWS CLI credentials/AWS_PROFILE), "
+                "and ensure the uploaded artifacts exist under that prefix. "
+                "If you want local fallback, set MODEL_SOURCE=auto."
+            )
 
-    logging.info("Falling back to local models directory")
-    return Path("src/artifacts/models")
+    # In 'auto' mode only, allow local fallbacks.
+    if MODEL_SOURCE == "auto":
+        if _has_required_artifacts(BEST_MODEL_DIR):
+            logging.info("Loaded best model artifacts from local best_model directory")
+            return BEST_MODEL_DIR
+
+        local_models_dir = Path("src/artifacts/models")
+        if _has_required_artifacts(local_models_dir):
+            logging.info("Loaded latest model artifacts from local models directory")
+            return local_models_dir
+
+        candidates = [cache_dir, BEST_MODEL_DIR, local_models_dir]
+        details = "; ".join(
+            f"{c.as_posix()} missing {', '.join(_missing_required_artifacts(c))}" for c in candidates
+        )
+        raise FileNotFoundError(
+            "Could not locate a complete set of model artifacts. "
+            f"Checked: {details}. "
+            "If S3 prefix changed, update BEST_MODEL_S3_DIR/MODEL_PUSHER_S3_KEY in src/constants/__init__.py or set env BEST_MODEL_S3_DIR."
+        )
+
+    raise ValueError("Invalid MODEL_SOURCE. Use 's3' or 'auto'.")
 
 
 model_dir = _resolve_model_dir()

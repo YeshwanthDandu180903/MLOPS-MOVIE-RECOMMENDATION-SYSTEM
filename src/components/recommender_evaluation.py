@@ -9,7 +9,6 @@ from src.logger import logging
 from src.constants import (
     BEST_MODEL_DIR,
     BEST_MODEL_METRICS_PATH,
-    GENRE_PRECISION_THRESHOLD,
     TFIDF_VECTORIZER_PATH,
     TFIDF_MATRIX_PATH,
     COSINE_SIMILARITY_PATH,
@@ -79,44 +78,7 @@ class RecommenderEvaluation:
             raise MyException(e, sys)
 
     # ==================================================
-    # Genre Precision @ K
-    # ==================================================
-    def genre_precision_at_k(self, k=10):
-        try:
-            total = 0
-            match = 0
-
-            for idx in range(len(self.df)):
-                base_genre_val = self.df.iloc[idx]["genres"]
-                if not isinstance(base_genre_val, str) or not base_genre_val:
-                    continue
-                base_genres = set(base_genre_val.split())
-
-                preds = self.recommend_fn(idx, top_n=k)
-                if preds is None or preds.empty:
-                    continue
-
-                for _, row in preds.iterrows():
-                    rec_genre_val = row["genres"]
-                    if not isinstance(rec_genre_val, str) or not rec_genre_val:
-                        continue
-                    total += 1
-                    rec_genres = set(rec_genre_val.split())
-                    if base_genres & rec_genres:
-                        match += 1
-
-            precision = match / total if total else 0.0
-
-            logging.info(f"Genre Precision@{k}: {precision:.4f}")
-            logging.info(f"  Matched: {match}/{total} recommendations")
-
-            return precision
-
-        except Exception as e:
-            raise MyException(e, sys)
-
-    # ==================================================
-    # Best-Model Selection (Genre Precision)
+    # Best-Model Selection (F1@K)
     # ==================================================
     def _load_best_metrics(self):
         if os.path.exists(BEST_MODEL_METRICS_PATH):
@@ -142,28 +104,20 @@ class RecommenderEvaluation:
         precision: float,
         recall: float,
         f1: float,
-        genre_precision: float,
         k: int = 10
     ) -> bool:
         try:
             best_metrics = self._load_best_metrics()
-            best_genre_precision = 0.0
-            if best_metrics and "genre_precision_at_k" in best_metrics:
-                best_genre_precision = best_metrics["genre_precision_at_k"] or 0.0
 
-            candidate_genre_precision = genre_precision or 0.0
+            best_f1 = 0.0
+            if best_metrics and "f1_at_k" in best_metrics:
+                best_f1 = best_metrics["f1_at_k"] or 0.0
 
-            if candidate_genre_precision < GENRE_PRECISION_THRESHOLD:
+            candidate_f1 = f1 or 0.0
+
+            if best_metrics and candidate_f1 <= best_f1:
                 logging.info(
-                    f"Candidate genre precision {candidate_genre_precision:.4f} "
-                    f"below threshold {GENRE_PRECISION_THRESHOLD:.2f}. Not updating best model."
-                )
-                return False
-
-            if best_metrics and candidate_genre_precision <= best_genre_precision:
-                logging.info(
-                    f"Candidate genre precision {candidate_genre_precision:.4f} "
-                    f"not better than best {best_genre_precision:.4f}."
+                    f"Candidate F1@{k} {candidate_f1:.4f} not better than best {best_f1:.4f}."
                 )
                 return False
 
@@ -172,14 +126,13 @@ class RecommenderEvaluation:
                 "precision_at_k": precision,
                 "recall_at_k": recall,
                 "f1_at_k": f1,
-                "genre_precision_at_k": candidate_genre_precision,
                 "k": k,
                 "updated_at": datetime.utcnow().isoformat()
             }
             self._save_best_metrics(metrics_payload)
 
             logging.info(
-                f"Best model updated. GenrePrecision@{k}={candidate_genre_precision:.4f}"
+                f"Best model updated. F1@{k}={candidate_f1:.4f}"
             )
             return True
 

@@ -25,7 +25,7 @@ pipeline.run_pipeline()
 
 # recommender = MovieRecommender()
 
-# matched_movie, recs = recommender.recommend("Spiderman", top_n=10)
+# matched_movie, recs = recommender.recommend("Bahubali", top_n=10)
 
 # print(f"\n🎬 Matched Movie: {matched_movie}\n")
 # print("📌 Recommendations:")

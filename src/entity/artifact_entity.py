@@ -49,7 +49,6 @@ class RecommenderEvaluationArtifact:
     precision_at_k: float
     recall_at_k: float
     f1_at_k: float
-    genre_precision_at_k: Optional[float] = None
 
 
 # # =========================================================

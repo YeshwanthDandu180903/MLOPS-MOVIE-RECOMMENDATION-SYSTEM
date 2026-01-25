@@ -91,7 +91,6 @@ BEST_MODEL_METRICS_PATH = BEST_MODEL_DIR / BEST_MODEL_METRICS_FILE_NAME
 # ============================================================
 
 TOP_K_RECOMMENDATIONS = 10
-GENRE_PRECISION_THRESHOLD = 0.50
 
 # ============================================================
 # AWS / Cloud (optional – future extension)
@@ -101,9 +100,18 @@ AWS_ACCESS_KEY_ID_ENV_KEY = "AWS_ACCESS_KEY_ID"
 AWS_SECRET_ACCESS_KEY_ENV_KEY = "AWS_SECRET_ACCESS_KEY"
 REGION_NAME = "us-east-1"
 
-MODEL_BUCKET_NAME = "movie-recommender-mlops"
-MODEL_PUSHER_S3_KEY = "model-registry/movie-recommender"
-BEST_MODEL_S3_DIR = f"{MODEL_PUSHER_S3_KEY}/best_model"
+def _join_s3_key(*parts: str) -> str:
+    cleaned: list[str] = []
+    for p in parts:
+        if not p:
+            continue
+        cleaned.append(p.replace("\\", "/").strip("/"))
+    return "/".join(cleaned)
+
+
+MODEL_BUCKET_NAME = os.getenv("MODEL_BUCKET_NAME", "mlops-movie-recommender")
+MODEL_PUSHER_S3_KEY = os.getenv("MODEL_PUSHER_S3_KEY", "model-registry/movie-recommender")
+BEST_MODEL_S3_DIR = os.getenv("BEST_MODEL_S3_DIR") or _join_s3_key(MODEL_PUSHER_S3_KEY, "best_model")
 
 # ============================================================
 # App / API constants

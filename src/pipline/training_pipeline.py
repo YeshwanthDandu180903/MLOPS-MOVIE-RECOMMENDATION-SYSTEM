@@ -1,4 +1,6 @@
 import sys
+import os
+import shutil
 from src.logger import logging
 from src.exception import MyException
 
@@ -19,6 +21,13 @@ from src.entity.config_entity import (
     ModelPusherConfig
 )
 from src.constants import BEST_MODEL_DIR, BEST_MODEL_S3_DIR, MODEL_BUCKET_NAME
+from src.constants import (
+    MODEL_DIR,
+    TRAINING_DF_FILE_NAME,
+    TFIDF_VECTORIZER_FILE_NAME,
+    TFIDF_MATRIX_FILE_NAME,
+    COSINE_SIMILARITY_FILE_NAME,
+)
 
 # Artifacts
 from src.entity.artifact_entity import (
@@ -206,25 +215,40 @@ class TrainingPipeline:
             # Load recommender for evaluation
             recommender = MovieRecommender()
 
-            evaluator = RecommenderEvaluation(
-                df=recommender.df,
-                cosine_sim=recommender.cosine_sim,
-                recommend_fn=recommender.recommend_by_index
-            )
+            # evaluator = RecommenderEvaluation(
+            #     df=recommender.df,
+            #     cosine_sim=recommender.cosine_sim,
+            #     recommend_fn=recommender.recommend_by_index
+            # )
 
-            precision, recall, f1 = evaluator.precision_recall_f1_at_k(k=10)
-            genre_precision = evaluator.genre_precision_at_k(k=10)
+            # precision, recall, f1 = evaluator.precision_recall_f1_at_k(k=10)
+            # genre_precision = evaluator.genre_precision_at_k(k=10)
 
-            updated = evaluator.update_best_model_if_needed(
-                precision=precision,
-                recall=recall,
-                f1=f1,
-                genre_precision=genre_precision,
-                k=10
-            )
+            # updated = evaluator.update_best_model_if_needed(
+            #     precision=precision,
+            #     recall=recall,
+            #     f1=f1,
+            #     k=10
+            # )
+            # Always push latest semantic model as BEST
+            logging.info("Updating best model with latest semantic recommender (no genre precision)")
 
-            if updated:
-                self.start_model_pusher()
+            os.makedirs(BEST_MODEL_DIR, exist_ok=True)
+            required_files = [
+                TRAINING_DF_FILE_NAME,
+                TFIDF_VECTORIZER_FILE_NAME,
+                TFIDF_MATRIX_FILE_NAME,
+                COSINE_SIMILARITY_FILE_NAME,
+            ]
+
+            for filename in required_files:
+                src_path = os.path.join(str(MODEL_DIR), filename)
+                dst_path = os.path.join(str(BEST_MODEL_DIR), filename)
+                if not os.path.exists(src_path):
+                    raise Exception(f"Required artifact not found: {src_path}")
+                shutil.copy2(src_path, dst_path)
+
+            self.start_model_pusher()
 
             # # Upload trained artifacts to S3
             # self.start_model_pusher()
