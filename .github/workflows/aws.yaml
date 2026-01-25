@@ -54,7 +54,6 @@ jobs:
 
       - name: Run Docker Image to serve users
         run: |
-          docker rm -f movie-app || true
 
           docker run -d \
             --name movie-app \
