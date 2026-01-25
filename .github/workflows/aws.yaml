@@ -52,7 +52,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - - name: Run Docker Image to serve users
+      - name: Run Docker Image to serve users
   run: |
     docker rm -f movie-app || true
 
