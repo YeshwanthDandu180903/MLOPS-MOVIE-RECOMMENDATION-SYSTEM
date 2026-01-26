@@ -1,5 +1,5 @@
 \
-# 🚀 MLOps Movie Recommendation System (TF‑IDF + Cosine Similarity)
+# 🚀 MLOps Movie Recommendation System
 
 > An end-to-end MLOps-style recommender system that ingests movie metadata from MongoDB, validates + transforms it into text features, trains a TF‑IDF semantic similarity model, and serves recommendations via a Flask web UI + JSON APIs. Includes optional AWS S3 model registry + runtime artifact download.
 
