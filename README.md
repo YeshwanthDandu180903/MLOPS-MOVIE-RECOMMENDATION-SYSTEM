@@ -81,18 +81,18 @@ We convert the text corpus into a sparse matrix where each movie is represented 
 ### 3. Cosine Similarity
 To determine how similar two movies are, we calculate the angle between their TF-IDF vector representations:
 
-\[
+$$
 \text{Similarity}(\mathbf{A}, \mathbf{B}) = \cos(\theta) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|} = \frac{\sum_{i=1}^{n} A_i B_i}{\sqrt{\sum_{i=1}^{n} A_i^2} \sqrt{\sum_{i=1}^{n} B_i^2}}
-\]
+$$
 
 This generates an $N \times N$ matrix enabling instant similarity score lookups.
 
 ### 4. Ranking Blend & Popularity Boost
 During inference, recommendations are sorted using a blended scoring function that balances similarity and rating quality:
 
-\[
+$$
 \text{Score} = w \cdot \text{Similarity}(\mathbf{A}, \mathbf{B}) + (1 - w) \cdot \text{NormalizedRating}
-\]
+$$
 
 > [!NOTE]
 > Rating normalization scales original movie ratings into a $[0, 1]$ range. The ranking blend ensures high-quality similar movies are prioritized over poor-quality matches.
