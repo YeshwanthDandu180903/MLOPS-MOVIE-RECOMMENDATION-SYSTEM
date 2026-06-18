@@ -1,319 +1,264 @@
 # 🚀 MLOps Movie Recommendation System
 
-> An end-to-end MLOps-style recommender system that ingests movie metadata from MongoDB, validates + transforms it into text features, trains a TF‑IDF semantic similarity model, and serves recommendations via a Flask web UI + JSON APIs. Includes optional AWS S3 model registry + runtime artifact download.
+<div align="center">
+
+[![Python](https://img.shields.io/badge/Python-3.10-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-v2.x-lightgrey?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![AWS S3](https://img.shields.io/badge/AWS-S3-orange?logo=amazon-s3&logoColor=white)](https://aws.amazon.com/s3/)
+[![Scikit-Learn](https://img.shields.io/badge/scikit--learn-v1.x-blue?logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
+[![Docker](https://img.shields.io/badge/Docker-Enabled-blue?logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+An end-to-end MLOps-style movie recommendation system that ingests movie metadata from MongoDB, validates schemas, cleans and transforms text features, trains a TF‑IDF semantic similarity model, and serves recommendations via a Flask web application and JSON APIs. Includes S3 integration for model storage and artifact caching.
+
+</div>
+
+---
+
+## 📋 Table of Contents
+- [Overview](#-overview)
+- [Architecture & Workflow](#-architecture--workflow)
+- [Recommendation Engine & Mathematics](#-recommendation-engine--mathematics)
+- [Tech Stack](#-tech-stack)
+- [Quick Start](#-quick-start)
+- [Configuration](#-configuration)
+- [Docker Deployment](#-docker-deployment)
+- [Directory Structure](#-directory-structure)
+- [Troubleshooting](#-troubleshooting)
+- [Security & Best Practices](#-security--best-practices)
+- [License & Contact](#-license--contact)
 
 ---
 
 ## 📋 Overview
 
-This project demonstrates a practical, production-minded recommendation pipeline:
+This project showcases a production-ready, modular recommendation pipeline structured around two main flows:
 
-- **Offline pipeline** to build a semantic model (TF‑IDF vectorizer + similarity matrix)
-- **Artifact management** (training dataframe + vectorizer + sparse matrix + cosine similarity)
-- **“Best model” packaging** and **optional S3 upload** for deployment-ready artifacts
-- **Online serving** (Flask UI + APIs) with **robust movie search** (exact/substr/fuzzy)
-
-It’s designed to be reproducible, modular, and easy to deploy locally or in containers.
-
----
-
-## 🏗️ Architecture & Components
-
-### **Training / Offline Pipeline**
-
-**1) Data Ingestion (MongoDB → CSV artifact)**
-- Fetches movie documents from MongoDB collection
-- Writes the raw dataset to an artifact path under `src/artifacts/data_ingestion/`
-
-**2) Data Validation (Schema checks)**
-- Uses `config/schema.yaml` to verify required columns exist
-- Logs extra columns (allowed)
-- Generates a validation report under `src/artifacts/data_validation/`
-
-**3) Data Transformation (Feature engineering for recommender)**
-- Drops unused columns
-- Handles null values in key text fields
-- Converts list-like fields (genres/cast/keywords) into space-joined text
-- Builds the training feature:
-	- `combined_text = overview + genres + keywords + cast + director`
-- Creates search helpers:
-	- `title_norm`, `title_tokens`
-- Normalizes rating:
-	- `rating_norm` used for ranking/boosting at inference time
-
-**4) Recommender Training (TF‑IDF + cosine similarity)**
-- Trains `TfidfVectorizer(stop_words="english", max_features=5000)`
-- Builds `tfidf_matrix` (sparse) and `cosine_similarity` matrix
-- Saves artifacts into `src/artifacts/models/`
-
-**5) Best Model Packaging + (Optional) Registry Upload**
-- Copies the latest trained artifacts into `src/artifacts/models/best_model/`
-- Uploads best_model artifacts to S3 (optional) via `ModelPusher`
-
-### **Serving / Online Prediction**
-
-**Flask UI + JSON API**
-- Loads recommender artifacts at startup
-- Can load artifacts from:
-	- **S3** (default) into `model_cache/best_model/`
-	- **Local fallback** when configured
-- Provides:
-	- HTML UI (`templates/index.html`)
-	- API responses via JSON
-
-**Search & Matching Engine**
-User input is normalized and resolved via:
-- exact match
-- substring match
-- prefix match (short queries)
-- fuzzy fallback (SequenceMatcher / token heuristics)
+| Stage | Component | Key Features |
+| :--- | :--- | :--- |
+| **Offline Pipeline** | Data Ingestion | Pulls raw movies metadata from MongoDB Atlas, saving snapshots locally. |
+| | Data Validation | Performs schema validation (`config/schema.yaml`) to verify field constraints. |
+| | Data Transformation | Cleans text, handles missing features, joins fields, and normalizes ratings. |
+| | Recommender Training | Vectorizes clean text using TF‑IDF and generates similarity arrays. |
+| | Model Push | Packages artifacts and optionally archives them to an AWS S3 Model Registry. |
+| **Online Serving** | Prediction API / Web UI | Loads model artifacts dynamically (local or S3) to serve fast search and recommendations. |
 
 ---
 
-## 🧠 Recommendation Method (Important Concepts)
+## 🏗️ Architecture & Workflow
 
-### **Content-Based Filtering**
-This is a **content-based recommender** (not collaborative filtering). It recommends movies similar to a given movie based on text metadata.
+The end-to-end data lifecycle flows through standard pipeline stages:
 
-### **TF‑IDF Vectorization**
-- Converts `combined_text` into numeric vectors
-- Downweights common words and upweights rare, informative terms
+```
+[ MongoDB Atlas ] ──(Data Ingestion)──> [ raw_movies.csv ]
+                                                │
+                                        (Schema Validation)
+                                                │
+                                                ▼
+[ transformed.csv ] <──(Feature Engineering)─── [ Schema Report ]
+         │
+         ├───(TF‑IDF Vectorizer)───────────────> [ tfidf_vectorizer.pkl ]
+         └───(Cosine Similarity Computation)────> [ cosine_similarity.npy ]
+                                                        │
+                                                        ▼
+[ Flask UI / JSON APIs ] <──(Model Loader)─── [ S3 Model Registry / Local Cache ]
+```
 
-### **Cosine Similarity**
-- Measures similarity between TF‑IDF vectors
-- Produces an $N \times N$ similarity matrix for fast lookup
+---
 
-### **Ranking Blend (Similarity + Rating Boost)**
-In serving (`app.py`), the final ranking score blends:
-- semantic similarity (cosine)
-- normalized rating (`rating_norm`) for quality bias
+## 🧠 Recommendation Engine & Mathematics
+
+### 1. Feature Engineering
+The recommender utilizes a **Content-Based Filtering** approach. We combine metadata elements into a single cohesive string for each movie:
+```python
+combined_text = overview + genres + keywords + cast + director
+```
+
+### 2. TF-IDF Representation
+We convert the text corpus into a sparse matrix where each movie is represented as a numerical vector using **Term Frequency-Inverse Document Frequency (TF-IDF)**.
+
+### 3. Cosine Similarity
+To determine how similar two movies are, we calculate the angle between their TF-IDF vector representations:
+
+\[
+\text{Similarity}(\mathbf{A}, \mathbf{B}) = \cos(\theta) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|} = \frac{\sum_{i=1}^{n} A_i B_i}{\sqrt{\sum_{i=1}^{n} A_i^2} \sqrt{\sum_{i=1}^{n} B_i^2}}
+\]
+
+This generates an $N \times N$ matrix enabling instant similarity score lookups.
+
+### 4. Ranking Blend & Popularity Boost
+During inference, recommendations are sorted using a blended scoring function that balances similarity and rating quality:
+
+\[
+\text{Score} = w \cdot \text{Similarity}(\mathbf{A}, \mathbf{B}) + (1 - w) \cdot \text{NormalizedRating}
+\]
+
+> [!NOTE]
+> Rating normalization scales original movie ratings into a $[0, 1]$ range. The ranking blend ensures high-quality similar movies are prioritized over poor-quality matches.
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Core
-- **Language**: Python 3.10
-- **Recommender / ML**: scikit-learn (TF‑IDF, cosine similarity)
-- **Data**: pandas, NumPy, SciPy (sparse matrices)
-
-### Backend / Serving
-- **Web App**: Flask + Jinja2 templates
-- **CORS**: flask-cors
-
-### Data + Cloud (Optional)
-- **MongoDB**: pymongo (data ingestion)
-- **AWS S3**: boto3 (artifact registry + runtime download)
-
-### Ops / Engineering Practices
-- Modular pipeline stages (ingestion/validation/transformation/training/pusher)
-- Configuration via constants + YAML schema
-- Structured logging across stages
+- **ML & Mathematics**: `Python 3.10`, `scikit-learn` (TF‑IDF, Cosine Similarity), `pandas`, `NumPy`, `SciPy` (sparse matrices)
+- **Serving Engine**: `Flask`, `Jinja2 Templates`, `Flask-CORS`
+- **Data & Storage**: `MongoDB` (pymongo client), `AWS S3` (boto3 integration)
+- **Containerization**: `Docker`
 
 ---
 
 ## 🚀 Quick Start
 
-### 1) Create Environment & Install Dependencies
-
+### 1. Clone & Set Up Environment
+Clone the repository and set up a Python virtual environment:
 ```bash
+git clone https://github.com/yourname/MLOPS-MOVIE-RECOMMENDATION-SYSTEM.git
+cd MLOPS-MOVIE-RECOMMENDATION-SYSTEM
 python -m venv .venv
-.venv\Scripts\activate
+```
+Activate the environment:
+* **Windows**:
+  ```bash
+  .venv\Scripts\activate
+  ```
+* **macOS/Linux**:
+  ```bash
+  source .venv/bin/activate
+  ```
 
+Install requirements:
+```bash
 pip install -r requirements.txt
 ```
 
-### 2) Configure MongoDB (for Training)
+### 2. Configure Credentials
+Set the MongoDB connection URL in your environment variables:
+* **Windows (Command Prompt)**:
+  ```cmd
+  set MONGODB_URL=mongodb+srv://<username>:<password>@cluster.mongodb.net/movie_recommender?retryWrites=true&w=majority
+  ```
+* **Windows (PowerShell)**:
+  ```powershell
+  $env:MONGODB_URL="mongodb+srv://<username>:<password>@cluster.mongodb.net/movie_recommender?retryWrites=true&w=majority"
+  ```
+* **Linux/macOS**:
+  ```bash
+  export MONGODB_URL="mongodb+srv://<username>:<password>@cluster.mongodb.net/movie_recommender?retryWrites=true&w=majority"
+  ```
 
-Set the MongoDB connection string as an environment variable:
-
-```bash
-set MONGODB_URL=mongodb+srv://<user>:<pass>@<cluster>/<db>?retryWrites=true&w=majority
-```
-
-Your pipeline uses:
-- Database: `movie_recommender`
-- Collection: `movies_metadata`
-
-### 3) Run Training Pipeline
-
-This executes ingestion → validation → transformation → training → best_model packaging → (optional) S3 push.
-
+### 3. Run Pipeline Training
+Run the pipeline setup wrapper to ingest data, validate the schema, transform text, train the models, and package artifacts:
 ```bash
 python demo.py
 ```
 
-### 4) Run the Web App (Serving)
-
+### 4. Launch Recommendation Web App
+Start the serving Flask app locally:
 ```bash
 python app.py
 ```
-
-Open in browser:
-- http://localhost:5000
+Open [http://localhost:5000](http://localhost:5000) in your web browser.
 
 ---
 
 ## ⚙️ Configuration
 
-### Schema
-- `config/schema.yaml` defines required columns like `title`, `overview`, `genres`, etc.
+### Schema Validation
+Schema structure checks are managed via [config/schema.yaml](config/schema.yaml). This guarantees that mandatory features like `title`, `overview`, `genres`, and `cast` exist in raw datasets.
 
-### Key Environment Variables
+### Environment Variables
 
-**MongoDB**
-- `MONGODB_URL` – required for training ingestion
-
-**S3 Model Registry (optional)**
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_DEFAULT_REGION` (or the region used in your AWS config)
-- `MODEL_BUCKET_NAME` (default: `mlops-movie-recommender`)
-- `MODEL_PUSHER_S3_KEY` (default: `model-registry/movie-recommender`)
-- `BEST_MODEL_S3_DIR` (derived from `MODEL_PUSHER_S3_KEY/best_model` unless overridden)
-
-**Serving artifact source**
-- `MODEL_SOURCE`: `s3` (default) or `auto`
-	- `s3`: must download from S3
-	- `auto`: try S3, else use local artifacts
-- `FORCE_S3_DOWNLOAD`: `1/true/yes` to force re-download
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `MONGODB_URL` | Connection URL to MongoDB Atlas clusters | *Required for Training* |
+| `MODEL_SOURCE` | Source for model artifacts (`s3` or `auto`) | `s3` |
+| `FORCE_S3_DOWNLOAD` | Force re-download of model files from S3 bucket | `false` |
+| `MODEL_BUCKET_NAME` | S3 bucket name for model registry | `mlops-movie-recommender` |
+| `AWS_ACCESS_KEY_ID` | AWS Credentials | *Required for S3 features* |
+| `AWS_SECRET_ACCESS_KEY` | AWS Credentials | *Required for S3 features* |
+| `AWS_DEFAULT_REGION` | AWS Region | `us-east-1` |
 
 ---
 
-## 📊 Pipeline Workflow (End-to-End)
+## 🐳 Docker Deployment
 
-### Data Ingestion
-```
-MongoDB → DataFrame → src/artifacts/data_ingestion/movies.csv
-```
-
-### Data Validation
-```
-movies.csv → schema.yaml checks → validation_report.yaml
-```
-
-### Data Transformation
-```
-movies.csv → clean + feature engineering → combined_text + search fields → transformed CSV
-```
-
-### Model Training
-```
-combined_text → TF‑IDF → tfidf_matrix → cosine_similarity.npy
-```
-
-### Best Model Packaging + Upload
-```
-latest artifacts → src/artifacts/models/best_model/ → (optional) S3
-```
-
----
-
-## 🐳 Docker
-
-Build:
+### Build Image
 ```bash
 docker build -t movie-recommender .
 ```
 
-Run:
+### Run Container
+To run locally without S3 dependencies using local cache:
 ```bash
-docker run -p 5000:5000 \
-	-e MODEL_SOURCE=auto \
-	movie-recommender
+docker run -p 5000:5000 -e MODEL_SOURCE=auto movie-recommender
 ```
 
-If you want S3 loading inside Docker, pass AWS credentials as env vars.
+> [!TIP]
+> If using S3 model loading, pass credentials to Docker run via `-e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS_KEY=...`.
 
 ---
 
-## 📁 Project Structure
+## 📁 Directory Structure
 
 ```
 MLOPS-MOVIE-RECOMMENDATION-SYSTEM/
-├── app.py
-├── demo.py
-├── Dockerfile
-├── requirements.txt
-├── config/
-│   ├── model.yaml
-│   └── schema.yaml
-├── model_cache/
-│   └── best_model/                 # runtime cache for S3 downloads
-├── src/
-│   ├── artifacts/                  # pipeline outputs (timestamped runs + stage dirs)
-│   ├── cloud_storage/              # AWS S3 helper
-│   ├── components/
-│   │   ├── data_ingestion.py
-│   │   ├── data_validation.py
-│   │   ├── data_transformation.py
-│   │   ├── recommender_trainer.py
-│   │   ├── recommender_evaluation.py
-│   │   └── model_pusher.py
-│   ├── configuration/
-│   │   ├── aws_connection.py
-│   │   └── mongo_db_connection.py
-│   ├── constants/
-│   │   └── __init__.py
-│   ├── data_access/
-│   │   └── proj1_data.py
-│   ├── entity/                     # configs + artifacts dataclasses
-│   ├── exception/
-│   ├── logger/
-│   ├── pipline/
-│   │   ├── training_pipeline.py
-│   │   └── prediction_pipeline.py
-│   └── utils/
-├── templates/
-│   └── index.html
-└── static/
-		└── style.css
+├── app.py                      # Flask Application Server
+├── demo.py                     # Training Pipeline Run Wrapper
+├── Dockerfile                  # Production Deployment Config
+├── requirements.txt            # Python Dependencies
+├── pyproject.toml              # Project Config
+├── config/                     
+│   ├── model.yaml              # Hyperparameter & Model Configuration
+│   └── schema.yaml             # Input Data Schema definitions
+├── templates/                  
+│   └── index.html              # UI Web templates
+├── static/                     
+│   └── style.css               # Web stylesheet
+├── model_cache/                # Deployment runtime local model cache
+└── src/                        
+    ├── artifacts/              # Local storage for pipeline stages outputs
+    ├── components/             # Reusable pipeline steps (ingestion, trainer...)
+    ├── configuration/          # AWS & MongoDB connectors
+    ├── constants/              # Global workflow configuration values
+    ├── data_access/            # MongoDB interface handlers
+    ├── entity/                 # Input/Output data schemas & configs
+    └── pipline/                # Core Training & Prediction pipelines
 ```
 
 ---
 
-## 🔐 Security & Best Practices
+## 🧪 Model Evaluation
 
-- Store credentials in environment variables (never commit keys)
-- Keep MongoDB Atlas network rules tight when deploying
-- Prefer IAM roles (on EC2/ECS) instead of static AWS keys
-- Use S3 versioning for model registry buckets (recommended)
-- Log pipeline outputs for reproducibility and debugging
-
----
-
-## 🧪 Model Evaluation (Optional)
-
-There is an evaluation component (`RecommenderEvaluation`) that can compute:
-- Precision@K / Recall@K / F1@K on similarity-based pseudo-ground-truth
-- Track best model metrics in `best_metrics.json`
-
-Note: In the current pipeline, best_model artifacts are always updated to the latest trained model (evaluation gate is currently commented out in the pipeline).
+The evaluation stage (`RecommenderEvaluation`) calculates performance metrics:
+- **Precision@K / Recall@K / F1-Score@K** based on content match rankings against predefined test distributions.
+- Results are recorded under `best_metrics.json`.
 
 ---
 
 ## 🧯 Troubleshooting
 
-**1) MongoDB ingestion fails**
-- Ensure `MONGODB_URL` is set and the cluster allows your IP.
+1. **MongoDB Connection Fails**:
+   - Ensure the IP address of your host machine is whitelisted in MongoDB Atlas Network Access rules.
+   - Verify `MONGODB_URL` contains the correct password.
 
-**2) Serving fails with missing artifacts**
-- If `MODEL_SOURCE=s3`, ensure S3 bucket/prefix contains:
-	- `training_df.csv`
-	- `tfidf_vectorizer.pkl`
-	- `tfidf_matrix.npz`
-	- `cosine_similarity.npy`
-- Or use `MODEL_SOURCE=auto` to allow local fallback.
+2. **Model Download Issues on Start**:
+   - If using `MODEL_SOURCE=s3` and S3 variables are not set or bucket is missing, set `MODEL_SOURCE=auto` to enable local fallback execution if local training was already completed.
 
-**3) Docker port mismatch**
-- App runs on port `5000` by default; expose/map `5000:5000`.
+3. **Port Conflicts**:
+   - The app defaults to port `5000`. If this is occupied (e.g., by AirPlay Receiver on macOS), you can override the port in `app.py`.
 
 ---
 
-## 📞 Contact
+## 🔐 Security & Best Practices
+* **Secret Management**: Never commit credentials like MongoDB URLs or AWS Access Keys to Git. Use environment variables.
+* **Networking**: Tighten MongoDB ingress IP rules in Atlas.
+* **IAM Roles**: When deploying on AWS (EC2/ECS), use IAM instance roles instead of hardcoding credentials.
 
-If you’d like, I can also add:
-- a GitHub Actions workflow for Docker build + deployment
-- a `docker-compose.yml` for local dev
-- a minimal `/health` endpoint + structured API docs
+---
 
+## 📄 License & Contact
+
+Distributed under the MIT License. See `LICENSE` for details.
+
+For questions or feedback, please contact the maintainer or create a GitHub Issue in the repository.
